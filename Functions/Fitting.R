@@ -12,7 +12,7 @@
 # F_t(T-t) as well as the corresponding 2.5% and 97.5% quantiles
 
 nowcasting <- function(doa, T.0, d.max, 
-                           create.plots = FALSE, print.effects = FALSE){
+                       create.plots = FALSE, print.effects = FALSE){
   
   # number of considered registration (and also reporting) dates
   T.max <- interval(T.0, doa) %/% days(1) 
@@ -43,7 +43,7 @@ nowcasting <- function(doa, T.0, d.max,
     
     data.t <- data[[tt+1]] %>% mutate(age.80 = 1*(age == "A80+")) %>%
       filter(date >= max(registration.dates[tt+1] - days(d.max-1), registration.dates[1]), 
-                                  age != "unbekannt", gender != "unbekannt") %>% 
+             age != "unbekannt", gender != "unbekannt") %>% 
       group_by_at(vars(date, age.80)) %>% summarise(C.t.d = pmax(sum(deaths), 0)) %>% ungroup() 
     
     num.days <- min(d.max, tt)
@@ -73,7 +73,7 @@ nowcasting <- function(doa, T.0, d.max,
   # interpolate data for report of April 5 (only half of the cases were reported)
   data.nowcast[which(data.nowcast$t + data.nowcast$d == 10 & data.nowcast$d > 1), ]$C.t.d <-
     round(sqrt((filter(data.nowcast, t+d == 9) %>% pull(C.t.d))*
-    head((filter(data.nowcast, t+d == 11) %>% pull(C.t.d)), 18)), 0)
+                 head((filter(data.nowcast, t+d == 11) %>% pull(C.t.d)), 18)), 0)
   data.nowcast[which(data.nowcast$t + data.nowcast$d == 10 & data.nowcast$d > 1), ]$N.t.d <-
     head((filter(data.nowcast, t+d == 10) %>% pull(C.t.d)), 18) - (filter(data.nowcast, t+d == 9) %>% pull(C.t.d))
   data.nowcast[which(data.nowcast$t + data.nowcast$d == 11 & data.nowcast$d > 1), ]$N.t.d <-
@@ -99,7 +99,7 @@ nowcasting <- function(doa, T.0, d.max,
     filter(t+d > T.max) 
   
   newdata <- mutate(newdata, pi = predict.gam(model, type = "response", newdata = newdata %>% 
-                              mutate(t = pmin(t, T.max-5))))
+                                                mutate(t = pmin(t, T.max-5))))
   
   data.nowcast <- predict.F(model = model, data = data.nowcast, 
                             newdata = newdata, T.max = T.max)
@@ -222,12 +222,12 @@ predict.F <- function(model, data, newdata, T.max, n = 10000, alpha = 0.05){
 # - T.0: first registration date to be considered in the nowcast, corresponds to t = 0
 # - d.max: maximum duration time that is assumed, see Section 4
 # - re: which random effects should be used?
-  # re = "joint" performs the analysis of Section 5
-  # re = "sep" performs the analysis of Section 6.2
+# re = "joint" performs the analysis of Section 5
+# re = "sep" performs the analysis of Section 6.2
 # - nowcast: which nowcasting results should be used for the offset?
-  # nowcast = "estimate" uses the estimate
-  # nowcast = "lower" uses the alpha/2 quantile
-  # nowcast = "upper" uses the 1-alpha/2 quantile
+# nowcast = "estimate" uses the estimate
+# nowcast = "lower" uses the alpha/2 quantile
+# nowcast = "upper" uses the 1-alpha/2 quantile
 # - return.model: returns the model object if TRUE (default to FALSE)
 # - print.effects: if TRUE (default to FALSE) prints the numbers
 # - which are shown in Table 2
@@ -265,7 +265,7 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
   F.t <- nowcasting(doa, T.0, d.max) %>% dplyr::select(t, age.80, nowcast)
   data.long[which(data.long$age.80 == 0), ]$F.t <- rep(F.t %>% filter(age.80 == 0) %>% pull(nowcast), each = nrow(districts)*2*3)  
   data.long[which(data.long$age.80 == 1), ]$F.t <- rep(F.t %>% filter(age.80 == 1) %>% pull(nowcast), each = nrow(districts)*2) 
-
+  
   # fit model
   if (re == "joint"){
     model <- bam(deaths ~ s(day, bs = "ps", k = 8) + s(lon, lat) + 
@@ -283,12 +283,12 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
                                              age.80 = factor(age.80)), 
                  family = nb, nthreads = 20)
   }
-
+  
   # add registration dates and data to bam object 
   model$registration.dates <- registration.dates
   model$data <- data.long
   model$F.t <- F.t
-    
+  
   # save model in the LRZ folder
   saveRDS(model, file = paste0(path.LRZ, "Output/", nowcast, "_", re, "_", doa, ".Rds"))
   
@@ -303,7 +303,7 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
     table.effects <- bind_cols(table.effects, rr.intervals(model, ind = ind))
     print(table.effects)
   }
-    
+  
   # return model if required
   if (return.model) {
     return(model)
@@ -317,9 +317,9 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
 # - data: formatted RKI data of the day of analysis
 # - T.max: the number of considered registration dates
 # - age.groups: a character vector contraining the age groups 
-  # which are considered
+# which are considered
 # - weekdays: character vector of length T.max containing the (abbreviated) 
-  # weekday corresponding to the registration dates
+# weekday corresponding to the registration dates
 
 # Output: a data frame containing the death counts for all combinations of covariates
 

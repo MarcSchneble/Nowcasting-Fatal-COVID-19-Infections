@@ -54,8 +54,8 @@ duration.time.KM = function(doa, d.max){
                    deaths = c(D.w.u80, D.m.u80),
                    kind = c(rep("Females", d.max), rep("Males", d.max)))
   df.a80 <- tibble(d = as.factor(rep(1:d.max, 2)),
-                  deaths = c(D.w.a80, D.m.a80),
-                  kind = c(rep("Females", d.max), rep("Males", d.max)))
+                   deaths = c(D.w.a80, D.m.a80),
+                   kind = c(rep("Females", d.max), rep("Males", d.max)))
   
   # get upper limit of y-axis
   lim <- max(df.a80 %>% group_by(d) %>% summarize(deaths = sum(deaths)) %>% pull(deaths))
@@ -74,7 +74,7 @@ duration.time.KM = function(doa, d.max){
     scale_x_discrete(breaks = c(1, seq(5, d.max, 5)), labels = as.character(c(1, seq(5, d.max-5, 5), paste0(d.max, "+")))) +  
     labs(x = "Days between registered infection and reported death", y = "Counts", fill = "Gender",
          title = "Age group 80+")
-
+  
   pdf(file = paste0(path.LRZ, "Plots/Descriptives/DurationTime.pdf"), height = 6, width = 12)
   g <- grid.arrange(g.u80, g.a80, nrow = 1)
   dev.off()
@@ -107,19 +107,19 @@ duration.time.KM = function(doa, d.max){
                                                  plot.title = element_text(hjust = 0.5)))
   
   km.a80 <- survfit(formula = Surv(time = d, event = event) ~ gender,
-                   type = "kaplan-meier", data = surv.df.a80)
+                    type = "kaplan-meier", data = surv.df.a80)
   g.a80 <- ggsurvplot(fit = km.a80, data = surv.df.u80, surv.median.line = "hv",
-                     conf.int = TRUE,
-             xlab = "Days between registered infection and reported death", 
-             ylab = "Kaplan Meier Estimator", legend = c(0.90, 0.91),
-             title = "Age Group 80+",
-             legend.title = "Gender",
-             legend.labs = c("Females", "Males"),
-             break.x.by = 5,
-             ggtheme=theme_bw() + theme(panel.grid = element_blank(), 
-                                        plot.title = element_text(hjust = 0.5)))
-
-
+                      conf.int = TRUE,
+                      xlab = "Days between registered infection and reported death", 
+                      ylab = "Kaplan Meier Estimator", legend = c(0.90, 0.91),
+                      title = "Age Group 80+",
+                      legend.title = "Gender",
+                      legend.labs = c("Females", "Males"),
+                      break.x.by = 5,
+                      ggtheme=theme_bw() + theme(panel.grid = element_blank(), 
+                                                 plot.title = element_text(hjust = 0.5)))
+  
+  
   g <- arrange_ggsurvplots(x = list(g.u80, g.a80), nrow = 1, print = FALSE)
   
   pdf(file = paste0(path.LRZ, "Plots/Descriptives/KaplanMeier.pdf"), height = 6, width = 12)

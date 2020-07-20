@@ -5,8 +5,8 @@
 # - model: the nowcast model object
 # - doa: day of analysis
 # - day.infos: a data frame consisting of the columns named by 
-  # t (values 0,...,T.max-1)
-  # registration date (corresponding to t)
+# t (values 0,...,T.max-1)
+# registration date (corresponding to t)
 
 # Output: none
 
@@ -64,10 +64,10 @@ plot.effects.nowcast <- function(model, doa, day.infos){
 # - T.max: the number of considered registration dates
 # - d.max: maximum duration time that is assumed, see Section 5
 # - observed: death counts observed on the day of analysis for 
-  # registration dates t = 0,...,T.max-1
+# registration dates t = 0,...,T.max-1
 # - day.infos: a data frame consisting of the columns named by 
-  # t (values 0,...,T.max-1)
-  # registration date (corresponding to t)
+# t (values 0,...,T.max-1)
+# registration date (corresponding to t)
 # - regisration.dates: dates corresponding to t = 0,...,T.max-1
 
 #Output: none
@@ -119,7 +119,7 @@ plot.nowcast <- function(data, doa, T.max, d.max,
                                         "Nowcasted",
                                         "Observed.finally"))
   df.bounds <- data.frame(t = data$t, lower = data$C.lower, upper = data$C.upper)
-
+  
   # plot
   labels.legend <- c(paste("Observed on ", doa),
                      paste("Nowcasted on ", doa),
@@ -169,14 +169,14 @@ plot.F <- function(time, data, registration.dates){
   # compute F_t(d) for d = 1,...d_max and given t
   d <- unique(data$d)
   F.t <- matrix(1, length(d), 2)
-
+  
   data.t1 <- filter(data, t == time[1], age.80 == 1)
   data.t2 <- filter(data, t == time[2], age.80 == 1)
   for (i in 2:length(d)) {
     F.t[i-1, 1] <- prod(1-data.t1$pi[i:nrow(data.t1)])
     F.t[i-1, 2] <- prod(1-data.t2$pi[i:nrow(data.t2)])
   }
- 
+  
   
   # data frame for plotting
   df <- data.frame(d = rep(c(0, d), 2), 
@@ -203,10 +203,10 @@ plot.F <- function(time, data, registration.dates){
 
 # Input:
 # - data: a data frame which contains all the information on the district borders
-  # as well as the  spatial effects for each district
+# as well as the  spatial effects for each district
 # - type: a character vector of length one containing one of the following values
-  # "m_2", "u_r", "u_rt", "fitted.deaths.per100k", "u_r0", "u_r1", 
-  # "u_r0_u80", "u_r1_u80", "u_r0_a80", "u_r1_a80"
+# "m_2", "u_r", "u_rt", "fitted.deaths.per100k", "u_r0", "u_r1", 
+# "u_r0_u80", "u_r1_u80", "u_r0_a80", "u_r1_a80"
 # - limits: a vector of length two specifying the limits of the legend
 # - state_borders: a data frame which contains the state borders of Germany
 # - plot_title: the title printed at the top of the map
@@ -271,7 +271,7 @@ plot.map <- function(data, type, limits, date, state_borders,
 
 # Input:
 # - deaths.by.district: a data frame with 412 rows containing the columns 
-  # districtId and fitted.deaths.per100k
+# districtId and fitted.deaths.per100k
 # - doa: day of analysis
 
 # Output: none
@@ -305,12 +305,12 @@ plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
 # Input: 
 # - doa: day of analysis
 # - re: which random effects should be used?
-  # re = "joint" (default) performs the analysis of Section 4
-  # re = "sep" performs the analysis of Section 6.2
+# re = "joint" (default) performs the analysis of Section 4
+# re = "sep" performs the analysis of Section 6.2
 # - nowcast: which nowcasting results should be used for the offset?
-  # nowcast = "estimate" (default) uses the estimate
-  # nowcast = "lower" uses the alpha/2 quantile
-  # nowcast = "upper" uses the 1-alpha/2 quantile
+# nowcast = "estimate" (default) uses the estimate
+# nowcast = "lower" uses the alpha/2 quantile
+# nowcast = "upper" uses the 1-alpha/2 quantile
 
 # Output: none
 
@@ -323,7 +323,7 @@ plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
   # get desired models
   files <- list.files(path= paste0(path.LRZ, "Output"))
   file <- files[intersect(grep(paste(doa), files), intersect(grep(paste(re), files), 
-                                          grep(paste(nowcast), files)))]
+                                                             grep(paste(nowcast), files)))]
   model = read_rds(paste0(path.LRZ, "Output/", file))  
   
   # initilaize table with district effects
@@ -498,9 +498,9 @@ plot.nowcasted.deaths.ref <- function(doa){
   
   rate <- df$y[which(df$kind == "estimate")]
   boundaries <- data.frame(x = pd.estimate$x,
-    lower = rate - 2*sqrt(rate^2*(pd.estimate$se/pd.estimate$se.mult)^2),
+                           lower = rate - 2*sqrt(rate^2*(pd.estimate$se/pd.estimate$se.mult)^2),
                            upper = rate + 2*sqrt(rate^2*(pd.estimate$se/pd.estimate$se.mult)^2))
-
+  
   # plot
   pdf(file = paste0(path.LRZ, "Plots/DeathsTime/", doa, ".pdf"), 
       width = 6, height = 4) 
@@ -541,7 +541,7 @@ plot.ACF <- function(doa){
   files <- list.files(path= paste0(path.LRZ, "Output"))
   files <- files[intersect(grep(as.character(doa), files), grep("joint", files))]
   model <- read_rds(paste0(path.LRZ, "Output/estimate_joint_", 
-                                    as.character(doa), ".rds"))
+                           as.character(doa), ".rds"))
   
   T.max <- length(unique(model$data$day))
   
@@ -587,7 +587,7 @@ plot.nowcast.vs.observed <- function(deaths.by.district, doa, d.max){
     geom_text(aes(label=ifelse((observed.deaths.finally.per100k>25)|(fitted.deaths.per100k>25), as.character(name),'')),hjust=0,vjust=-0.7, size=3 ) + 
     labs(x = paste0("Observed 40 Days after ", doa), y = paste0("Nowcasted on ", doa), 
          title = "Observed vs. Nowcasted Fatal Infections per 100 000 Inhabitants", subtitle = paste0("Registration dates from ", 
-                                                     as.character(doa - days(d.max+1)), " to ", as.character(doa - days(1)))) + 
+                                                                                                      as.character(doa - days(d.max+1)), " to ", as.character(doa - days(1)))) + 
     theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
                        plot.subtitle = element_text(hjust = 0.5)) 
   print(g)

@@ -5,8 +5,8 @@
 
 # Input:
 # - all: if TRUE, all raw data available are being read and saved,
-  # if FALSE (default), only datasets which have not been read yet
-  # will be read. Setting "all" to TRUE should be avoided.
+# if FALSE (default), only datasets which have not been read yet
+# will be read. Setting "all" to TRUE should be avoided.
 
 # Output: none
 
@@ -20,7 +20,7 @@ read.RKI <- function(all = FALSE){
   # get all filenames and the respective dates from the data that already has been preprocessed
   files.read <- list.files(path= paste0(path.LRZ, "Data/Formatted"))
   dates.read <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files.read)), 
-                                   hour = 0, tz = "GMT")
+                           hour = 0, tz = "GMT")
   
   if (!all){
     # only preprocess if data has not been preprocessed yet

@@ -10,7 +10,8 @@ Sys.setlocale("LC_ALL","English")
 # path to the folder where all the data are stored and
 # model objects and plots are saved to
 # insert your local absolute path here!!!
-path.LRZ <<- "C:/Users/ru58paj/LRZ Sync+Share/Nowcasting Fatal COVID-19 Infections/"                     
+# details see the README file
+path.LRZ <<- "YOUR PATH HERE/Nowcasting Fatal COVID-19 Infections/"                     
 
 
 # load functions and packages ----
