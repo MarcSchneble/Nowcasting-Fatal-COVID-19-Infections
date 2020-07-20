@@ -16,11 +16,11 @@ plot.effects.nowcast <- function(model, doa, day.infos){
                                plot.title = element_text(hjust = 0.5)))
   
   # time plot
-  pd <- plot.gam(model, select = 0)[[2]]
+  pd <- plot.gam(model, select = 0)[[3]]
   s.t <- data.frame(x = pd$x, y = pd$fit, lower = pd$fit - pd$se, upper = pd$fit + pd$se)          
   
   pdf(file = paste0(path.LRZ, "Plots/Nowcasting/TimeEffect/", doa, ".pdf"), width = 6, height = 4) 
-  g <- ggplot(s.t, aes(x = x)) + geom_line(aes(y = y)) + 
+  g <- ggplot(s.t, aes(x = x)) + geom_line(aes(y = y), size = 1.2) + 
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) + 
     labs(x = "Registration Date", y = expression(widehat(s)[1](t))) + 
     scale_x_continuous(breaks = seq(0, max(s.t$x), 2), 
@@ -30,41 +30,30 @@ plot.effects.nowcast <- function(model, doa, day.infos){
   print(g)
   dev.off()
   
-  # delay plot
-  pd <- plot.gam(model, select = 0)[[1]]
-  s.d <- data.frame(x = pd$x, y = pd$fit, lower = pd$fit - pd$se, upper = pd$fit + pd$se)
+  # delay plots
+  pd.u80 <- plot.gam(model, select = 0)[[1]]
+  pd.a80 <- plot.gam(model, select = 0)[[2]]
+  s.d <- data.frame(x = c(pd.u80$x, pd.a80$x), y = c(pd.u80$fit, pd.a80$fit), 
+                    lower = c(pd.u80$fit - pd.u80$se, pd.a80$fit - pd.a80$se), 
+                    upper = c(pd.u80$fit + pd.u80$se, pd.a80$fit + pd.a80$se),
+                    kind = c(rep("80-", length(pd.u80$x)), rep("80+", length(pd.a80$x))))
   
   pdf(file = paste0(path.LRZ, "Plots/Nowcasting/DurationEffect/", doa, ".pdf"), 
       width = 6, height = 4) 
-  g <- ggplot(s.d, aes(x = x)) + geom_line(aes(y = y)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) + 
-    labs(x = "d", y = expression(widehat(s)[2](d))) + 
-    scale_x_continuous(breaks = seq(0, d.max, 5))
+  g <- ggplot(s.d, aes(x = x)) + geom_line(aes(y = y, color = kind, linetype = kind), size = 1.2) + 
+    geom_ribbon(data = s.d %>% filter(kind == "80-"), aes(ymin = lower, ymax = upper), alpha = 0.3) + 
+    geom_ribbon(data = s.d %>% filter(kind == "80+"), aes(ymin = lower, ymax = upper), alpha = 0.2) + 
+    labs(x = "d", y = expression(paste(widehat(s)[2](d), "  and  ", widehat(s)[2](d)+widehat(s)[3](d))), color = "Age Group", linetype = "Age Group") + 
+    scale_x_continuous(breaks = seq(0, d.max, 5), limits = c(0, d.max)) + 
+    theme(legend.justification = c(0.99, 0.99), legend.position = c(0.99, 0.99), legend.text.align = 0) + 
+    scale_color_manual(values = c("seagreen", "sienna"), 
+                       labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]")))) + 
+    scale_linetype_manual(values = c(1, 2), 
+                          labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]"))))
   print(g)
   dev.off()
 }
 
-# This function creates the residuals plot of the nowcast model 
-# and saves it in the LRZ folder
-
-# Input: 
-# - model: the nowcast model object
-# - doa: day of analysis
-
-# Output: none
-
-plot.residuals.nowcast <- function(model, doa){
-  
-  # get residuals of the nowcast model
-  resid <- residuals.gam(model, type = "scaled.pearson")
-  
-  # plot quantiles of residuals against quantiles of the N(0,1) distribution
-  pdf(file = paste0(path.LRZ, "Plots/Nowcasting/Residuals/", doa, ".pdf"), 
-      width = 10, height = 8)
-  qqnorm(resid)
-  qqline(resid, col = "red")
-  dev.off()
-}
 
 # This function creates the plot of the nowcasting results 
 # and saves it in the LRZ folder
@@ -83,37 +72,80 @@ plot.residuals.nowcast <- function(model, doa){
 
 #Output: none
 
-plot.nowcast <- function(data, doa, T.max, d.max, observed, 
+plot.nowcast <- function(data, doa, T.max, d.max, 
                          day.infos, registration.dates){
   
   theme_set(theme_bw() + theme(panel.grid = element_blank(), 
                                plot.title = element_text(hjust = 0.5)))
+  
+  # get the observed values at the day of analysis
+  observed <- read_rds(paste0(path.LRZ, "Data/Formatted/cases_GermanTemporal_", doa, ".rds")) %>%
+    filter(date >= min(registration.dates), date <= max(registration.dates),
+           age != "A00-A04", age != "A05-A14", age != "unbekannt", gender != "unbekannt") %>%
+    group_by(date) %>%
+    summarize(deaths = sum(deaths)) %>%
+    ungroup() %>%
+    pull(deaths)
+  
   # extract the nowcasts
-  data <- data %>% filter(d == d.max) %>% replace_na(list(C = 0)) %>%
-    mutate(C.lower = coalesce(C.lower, C), C.upper = coalesce(C.upper, C))
+  data <- data %>% filter(d == d.max) %>% group_by(t) %>% 
+    summarize(C.estimate = sum(C.estimate), C.lower = sum(C.lower), C.upper = sum(C.upper)) %>% 
+    ungroup() %>% 
+    mutate(C.observed = observed,
+           C.observed.finally = C.observed,
+           C.estimate = coalesce(C.estimate, C.observed),
+           C.lower = coalesce(C.lower, C.observed),
+           C.upper = coalesce(C.upper, C.observed)) 
+  
+  # get the observed values after d.max days
+  for (t in (T.max-d.max+1):(T.max-1)) {
+    data.d.max <- read_rds(paste0(path.LRZ, "Data/Formatted/cases_GermanTemporal_", T.0 + days(t + d.max), ".rds"))
+    data$C.observed.finally[t+1] <- 
+      data.d.max %>% filter(date == registration.dates[t+1], 
+                            age != "A00-A04", age != "A05-A14", 
+                            age != "unbekannt", gender != "unbekannt") %>%
+      group_by(date) %>%
+      summarize(deaths = sum(deaths)) %>%
+      ungroup() %>%
+      pull(deaths)
+  }
   
   # build data frame for plotting
-  df <- data.frame(t = rep(0:(T.max-1), 2), y = c(pmin(observed, data$C), data$C), 
-                   kind = c(rep("Observed", T.max), rep("Nowcast", T.max)))
-  df$kind <- factor(df$kind, levels = c("Observed", "Nowcast"))
-  df.bounds <- data.frame(t = 0:(T.max-1), lower = data$C.lower, upper = data$C.upper)
+  df <- data.frame(t = rep(data$t, 3), y = c(data$C.observed, data$C.estimate, data$C.observed.finally), 
+                   kind = c(rep("Observed", T.max), 
+                            rep("Nowcasted", T.max),
+                            rep("Observed.finally", T.max)))
+  df$kind <- factor(df$kind, levels = c("Observed", 
+                                        "Nowcasted",
+                                        "Observed.finally"))
+  df.bounds <- data.frame(t = data$t, lower = data$C.lower, upper = data$C.upper)
 
   # plot
+  labels.legend <- c(paste("Observed on ", doa),
+                     paste("Nowcasted on ", doa),
+                     expression(paste("Finally realized ", d[max], " Days after the Registration Date")))
+  shape.legend <- c(16, 17, 15)
+  linetype.legend <- c(1, 3, 4)
+  
+  
   pdf(file = paste0(path.LRZ, "Plots/Nowcasting/Nowcast/", 
                     max(registration.dates)+days(1), ".pdf"), width = 10, height = 6) 
   g <- ggplot(df, aes(x = t)) + geom_line(aes(y = y, color = kind, linetype = kind)) + 
-    geom_point(aes(y = y, color = kind)) +
-    labs(x = "Registration Date", color = "", linetype = "", 
-         y = "Count of Deaths due to Covid-19",
-         title = paste0("Count of Deaths by Registration Date due to a Covid-19 Infection 
-                        according to the RKI report from ", doa)) + 
+    geom_point(aes(y = y, color = kind, shape = kind)) +
+    labs(x = "Registration Date", color = "", linetype = "", shape = "",
+         y = "Count of fatal COVID-19 infections",
+         title = paste0("Counts of fatal COVID-19 infections by date of registration \nbased on the RKI data reported on ", doa)) + 
     geom_ribbon(data = df.bounds, aes(ymin = lower, ymax = upper), alpha = 0.3) + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1), 
-          legend.justification = c(0.99, 0.99), legend.position = c(0.99, 0.99)) + 
+          legend.justification = c(0.99, 0.99), legend.position = c(0.99, 0.995)) + 
     scale_x_continuous(breaks = seq(0, max(df$t), 2), 
                        labels = as.character(substring(registration.dates, 6))[seq(1, max(df$t)+1, 2)]) + 
     scale_y_continuous(breaks = seq(0, max(df$y), 50), 
-                       sec.axis = dup_axis(name = ""))
+                       sec.axis = dup_axis(name = "")) + 
+    scale_color_hue(labels = labels.legend) +
+    guides(colour = guide_legend(override.aes = list(shape = shape.legend, linetype = linetype.legend))) + 
+    scale_shape(guide = FALSE) +
+    scale_linetype(guide = FALSE)
   # add vertical lines on sundays
   for (s in which(day.infos$weekday == "Sun")) {
     g <- g + geom_vline(xintercept = s-1, linetype = "dashed")
@@ -127,7 +159,7 @@ plot.nowcast <- function(data, doa, T.max, d.max, observed,
 
 # Input:
 # - time: time points t for which F_t should be plotted
-# - data: a data frame which is the output of the function predict.C(...)
+# - data: a data frame which is the output of the function predict.F(...)
 # - regisration.dates: dates corresponding to t = 0,...,T.max-1
 
 # Output: none
@@ -136,32 +168,32 @@ plot.F <- function(time, data, registration.dates){
   
   # compute F_t(d) for d = 1,...d_max and given t
   d <- unique(data$d)
-  F.t <- matrix(1, nrow(filter(data, t == time[1])), length(time))
-  k <- 0
-  for (tt in time) {
-    k <- k+1
-    data.t <- filter(data, t == tt)
-    for (i in 2:nrow(data.t)) {
-      F.t[i-1, k] <- prod(1-data.t$pi[i:nrow(data.t)])
-    }
+  F.t <- matrix(1, length(d), 2)
+
+  data.t1 <- filter(data, t == time[1], age.80 == 1)
+  data.t2 <- filter(data, t == time[2], age.80 == 1)
+  for (i in 2:length(d)) {
+    F.t[i-1, 1] <- prod(1-data.t1$pi[i:nrow(data.t1)])
+    F.t[i-1, 2] <- prod(1-data.t2$pi[i:nrow(data.t2)])
   }
+ 
   
   # data frame for plotting
   df <- data.frame(d = rep(c(0, d), 2), 
                    F.t = c(0, F.t[, 1], 0, F.t[, 2]),
-                   date = c(rep(paste0("t = ", registration.dates[time[1]]+days(1)), d.max+1), 
-                            rep(paste0("t = ", registration.dates[time[2]]+days(1)), d.max+1)))
+                   kind = c(rep(as.character(registration.dates[time[1]+1]), d.max+1), 
+                            rep(as.character(registration.dates[time[2]+1]), d.max+1)))
   
   # plot 
   pdf(file = paste0(path.LRZ, "Plots/Nowcasting/F/", 
-                    max(registration.dates)+days(1), ".pdf"), width = 10, height = 6)
+                    max(registration.dates)+days(1), ".pdf"), width = 6, height = 4)
   g <- ggplot(df, aes(x = d, y = F.t)) + 
-    geom_step(aes(color = date, linetype = date), direction = "hv") + 
-    geom_point(aes(color = date)) +
+    geom_step(aes(color = kind, linetype = kind), direction = "hv") + 
+    geom_point(aes(color = kind), size = 0.8) +
     theme(legend.justification = c(0.01, 0.99), legend.position = c(0.01, 0.99)) + 
-    scale_x_continuous(breaks = seq(0, 30, 5)) + 
-    labs(y = expression(F[t](d)), color = "Reporting Date", linetype = "Reporting Date") + 
-    geom_hline(yintercept = 0.5, alpha = 0.3, linetype = "dashed")
+    scale_x_continuous(breaks = seq(0, 40, 5)) + 
+    labs(y = expression(F[t](d)), color = "Registration Date t", linetype = "Registration Date t") + 
+    geom_hline(yintercept = 0.5, alpha = 0.3, linetype = "dashed") 
   print(g)
   dev.off()
 } 
@@ -179,11 +211,12 @@ plot.F <- function(time, data, registration.dates){
 # - state_borders: a data frame which contains the state borders of Germany
 # - plot_title: the title printed at the top of the map
 # - legend_title: the title printed at the top of the legend
+# - caption: printed below the plot title
 
 # Output: a ggplot object
 
 plot.map <- function(data, type, limits, date, state_borders,
-                     plot_title, legend_title) {
+                     plot_title, legend_title, caption) {
   
   # Checking of inputs:
   assert_choice(x = type, choices = c("m_2", "u_r", "u_rt", "fitted.deaths.per100k",
@@ -209,7 +242,7 @@ plot.map <- function(data, type, limits, date, state_borders,
   
   plot <- ggplot() +
     ggtitle(plot_title) +
-    labs(caption = paste0("Data reported on ", date)) +
+    labs(caption = caption) +
     geom_polygon(data = data,
                  mapping = aes(x = long, y = lat, group = group,
                                fill = !!fill),
@@ -225,7 +258,11 @@ plot.map <- function(data, type, limits, date, state_borders,
                                                                  "Bremen"), ],
                  mapping = aes(x = long, y = lat, group = group),
                  col = "grey20", fill = NA) +
-    scale_fill_gradient2(legend_title, low = "steelblue", high = "firebrick2", limits = limits) + theme 
+    scale_fill_gradient2(legend_title, low = "steelblue", high = "firebrick2", limits = limits) +
+    north(data, location = "topleft", scale = 0.15) +
+    scalebar(data, transform = TRUE, dist_unit = "km", dist = 100, model = "WGS84",
+             location = "topright") +
+    theme 
   return(plot)
 }
 
@@ -239,7 +276,7 @@ plot.map <- function(data, type, limits, date, state_borders,
 
 # Output: none
 
-plot.fitted <- function(deaths.by.district, doa){
+plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
   
   # district and state boundaries for plotting
   district_borders = read_rds(paste0(path.LRZ, "Data/Maps/district_borders.Rds"))
@@ -249,17 +286,21 @@ plot.fitted <- function(deaths.by.district, doa){
   plot_data_effects <- full_join(district_borders, deaths.by.district)
   
   png(file = paste0(path.LRZ, "Plots/Fitted/", doa, ".png"), 
-      width = 1400, height = 1550, units = "px") 
+      width = 1300, height = 1600, units = "px") 
   print(plot.map(plot_data_effects, type = "fitted.deaths.per100k", 
                  limits = range(deaths.by.district$fitted.deaths.per100k), 
                  date = doa, state_borders = state_borders, 
-                 plot_title = "Fitted Deaths per 100 000 Inhabitants",
-                 legend_title = expression(widehat(lambda)[r])))
+                 plot_title = paste0("Nowcasted fatal infections per 100 000 inhabitants \nwith registration dates from ",
+                                     model$registration.dates[day.min+1], " until ",
+                                     model$registration.dates[day.max+1]),
+                 legend_title = expression(widehat(lambda)[r]),
+                 caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                  min(model$registration.dates), " until ", max(model$registration.dates), ".")))
   dev.off()
 }
 
 # This function creates the plots of the two spatial effects 
-# included in the quasi-Poisson model and saves the plots in the LRZ folder
+# included in the negative binomial model and saves the plots in the LRZ folder
 
 # Input: 
 # - doa: day of analysis
@@ -330,11 +371,13 @@ plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
   dir.create(directory, showWarnings = FALSE)
   
   png(file = paste0(directory, "/", doa, ".png"), 
-      width = 1400, height = 1550, units = "px")
+      width = 1300, height = 1550, units = "px")
   print(plot.map(data, type = "m_2", limits = range(district.effects$m_2), 
                  date = doa, state_borders = state_borders, 
                  plot_title = "Estimates of Smooth Spatial Effect",
-                 legend_title = expression(widehat(m)[2](s[r]))))
+                 legend_title = expression(widehat(m)[2](s[r])),
+                 caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                  min(model$registration.dates), " until ", max(model$registration.dates), ".")))
   dev.off()
   
   # plot random intercept
@@ -342,66 +385,77 @@ plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
     # plot random intercept u_r0
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/joint")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", u[r0])),
-                   legend_title = expression(widehat(u)[r0])))
+                   plot_title = "Estimates of Long-Term Random Intercept",
+                   legend_title = expression(widehat(u)[r0]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
     # plot random intercept u_r1
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/joint")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", u[r1])),
-                   legend_title = expression(widehat(u)[r1])))    
+                   plot_title = "Estimates of Short-Term Random Intercept",
+                   legend_title = expression(widehat(u)[r1]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))    
     dev.off()
+    
+    
   } else {
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/u80")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0_u80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", 
-                                                 u[r0], " for the Age Group 80-")),
-                   legend_title = expression(widehat(u)[r0])))
+                   plot_title = "Estimates of Short-Term Random Intercept (Age Group 80-)",
+                   legend_title = expression(widehat(u)[r0]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off() 
     
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/u80")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1_u80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", 
-                                                 u[r1], " for the Age Group 80-")),
-                   legend_title = expression(widehat(u)[r1])))
+                   plot_title = "Estimates of Long-Term Random Intercept (Age Group 80-)",
+                   legend_title = expression(widehat(u)[r1]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/a80")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0_a80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", 
-                                                 u[r0], " for the Age Group 80+")),
-                   legend_title = expression(widehat(u)[r0])))
+                   plot_title = "Estimates of Short-Term Random Intercept (Age Group 80+)",
+                   legend_title = expression(widehat(u)[r0]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
     directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/a80")
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1400, height = 1550, units = "px")
+        width = 1300, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1_a80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = expression(paste("Estimates of Spatial Random Intercept ", 
-                                                 u[r1], " for the Age Group 80+")),
-                   legend_title = expression(widehat(u)[r1])))
+                   plot_title = "Estimates of Long-Term Random Intercept (Age Group 80+)",
+                   legend_title = expression(widehat(u)[r1]),
+                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                                    min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
+    
   }
 }
 
-# This function creates Figure 1, the death rates for the reference group
+# This function creates the time plot of the expected deaths in the reference group
 # and saves the plot in the LRZ folder
 
 # Input:
@@ -409,7 +463,7 @@ plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
 
 # Output: none
 
-plot.nowcasted.death.rate <- function(doa){
+plot.nowcasted.deaths.ref <- function(doa){
   
   theme_set(theme_bw() + theme(panel.grid = element_blank(), 
                                plot.title = element_text(hjust = 0.5)))
@@ -427,7 +481,7 @@ plot.nowcasted.death.rate <- function(doa){
   # extract the intercepts for joining the curves at the beginning
   intercept.estimate <- as.numeric(model.estimate$coefficients[1])
   intercept.lower <- as.numeric(model.lower$coefficients[1])
-  intercept.upper <- as.numeric(model.upper$coefficients[1])
+  intercept.upper <- as.numeric(model.upper$coefficients[1]) 
   
   # data frame for plotting
   pd.estimate <- plot.gam(model.estimate, select = 0)[[1]]
@@ -448,7 +502,7 @@ plot.nowcasted.death.rate <- function(doa){
                            upper = rate + 2*sqrt(rate^2*(pd.estimate$se/pd.estimate$se.mult)^2))
 
   # plot
-  pdf(file = paste0(path.LRZ, "Plots/DeathRate/", doa, ".pdf"), 
+  pdf(file = paste0(path.LRZ, "Plots/DeathsTime/", doa, ".pdf"), 
       width = 6, height = 4) 
   g <- ggplot(df, aes(x = x)) + geom_line(aes(y = y, color = kind, linetype = kind)) + 
     geom_ribbon(data = boundaries, aes(ymin = lower, ymax = upper), alpha = 0.3) +
@@ -461,11 +515,83 @@ plot.nowcasted.death.rate <- function(doa){
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     scale_y_continuous(limits = c(0, max(df$y, boundaries$upper)), 
                        breaks = seq(0,  max(df$y, boundaries$upper), 0.005)) + 
-    labs(x = "Registration Date", y = "Death Rate per 100 000 in the Reference Group", 
+    labs(x = "Registration Date", y = "Expected Deaths per 100 000 Inhabitants \nin the Reference Group", 
          color = "Nowcast", linetype = "Nowcast") 
   for (h in seq(0,  max(df$y, boundaries$upper), 0.005)) {
     g <- g + geom_hline(yintercept = h, linetype = "dashed", alpha = 0.3)
   }
   print(g)
   dev.off()
+}
+
+# This function creates the ACF plot of the residuals in the mortality model
+# and saves it in the LRZ folder
+
+# Input:
+# - doa: Day of Analysis
+
+# Output: none
+
+plot.ACF <- function(doa){
+  
+  theme_set(theme_bw() + theme(panel.grid = element_blank(), 
+                               plot.title = element_text(hjust = 0.5)))
+  
+  # get the required model objects
+  files <- list.files(path= paste0(path.LRZ, "Output"))
+  files <- files[intersect(grep(as.character(doa), files), grep("joint", files))]
+  model <- read_rds(paste0(path.LRZ, "Output/estimate_joint_", 
+                                    as.character(doa), ".rds"))
+  
+  T.max <- length(unique(model$data$day))
+  
+  data <- matrix(residuals.gam(model, type = "pearson"), nrow = 412*2*4, byrow = TRUE)
+  ACF <- tibble(lag = 0:(T.max-1), acf = 1)
+  for (k in 1:(T.max-1)) {
+    ind.1 <- seq(1, T.max-k, 1)
+    ind.2 <- seq(k+1, T.max, 1)
+    resid.1 <- NULL
+    for (i in ind.1) {
+      resid.1 <- c(resid.1, data[ind.1, ])
+    }
+    resid.2 <- NULL
+    for (i in ind.2) {
+      resid.2 <- c(resid.2, data[ind.2, ])
+    }
+    ACF$acf[k+1] <- cor(resid.1, resid.2)
+  }
+  
+  g <- ggplot(data = ACF, mapping = aes(x = lag, y = acf)) +
+    geom_hline(aes(yintercept = 0)) +
+    geom_segment(mapping = aes(xend = lag, yend = 0)) + 
+    scale_y_continuous(limits = c(-0.25, 1), breaks = seq(-0.2, 1, 0.2)) + 
+    labs(x = "Lag", y = "ACF")
+  
+  pdf(file = paste0(path.LRZ, "Plots/ACF/", doa, ".pdf"), 
+      width = 6, height = 4) 
+  print(g)
+  dev.off()
+} 
+
+plot.nowcast.vs.observed <- function(deaths.by.district, doa, d.max){
+  
+  lim <- max(deaths.by.district$observed.deaths.finally.per100k, deaths.by.district$upper.per.100k)
+  
+  pdf(file = paste0(path.LRZ, "Plots/NowcastedVsObserved/", doa, "_withcases.pdf")) 
+  g <- ggplot(data = deaths.by.district, aes(x = observed.deaths.finally.per100k, y = fitted.deaths.per100k)) +
+    geom_abline(intercept = 0, slope =  1, col = "grey60", linetype = "dashed", size = 1.2) +    
+    geom_segment(aes(x = observed.deaths.finally.per100k, y = lower.per.100k, xend = observed.deaths.finally.per100k, yend = upper.per.100k), color = "grey50", size = 0.6, data = deaths.by.district) +
+    geom_point(color = "black", shape = 3, size = 1.5) +
+    scale_x_continuous(limits = c(0, lim)) + 
+    scale_y_continuous(limits = c(0, lim)) + 
+    geom_text(aes(label=ifelse((observed.deaths.finally.per100k>25)|(fitted.deaths.per100k>25), as.character(name),'')),hjust=0,vjust=-0.7, size=3 ) + 
+    labs(x = paste0("Observed 40 Days after ", doa), y = paste0("Nowcasted on ", doa), 
+         title = "Observed vs. Nowcasted Fatal Infections per 100 000 Inhabitants", subtitle = paste0("Registration dates from ", 
+                                                     as.character(doa - days(d.max+1)), " to ", as.character(doa - days(1)))) + 
+    theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
+                       plot.subtitle = element_text(hjust = 0.5)) 
+  print(g)
+  dev.off()
+  
+  
 }

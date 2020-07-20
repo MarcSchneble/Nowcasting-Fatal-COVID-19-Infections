@@ -1,4 +1,4 @@
-# This function takes read the raw RKI data, gives suitable column names
+# This function reads the raw RKI data, gives suitable column names
 # and saves the table as tibble
 # Caution: The style of the RKI datasets has changed over time and probably
 # will change again, i.e. new columns are added or columns are rearranged
@@ -6,7 +6,7 @@
 # Input:
 # - all: if TRUE, all raw data available are being read and saved,
   # if FALSE (default), only datasets which have not been read yet
-  # will be read
+  # will be read. Setting "all" to TRUE should be avoided.
 
 # Output: none
 
@@ -56,7 +56,8 @@ read.RKI <- function(all = FALSE){
   }
 }
 
-# This function formats the RKI data read in by read.RKI()
+# This function formats the RKI data read in by read.RKI() to have the data in a
+# common style
 
 # Input: none
 
@@ -103,6 +104,7 @@ format.RKI <- function(){
 # - the district names and Ids, 
 # - the gender/age group specific population sizes
 # - the coordinates of the centroids of the districts
+# - the population density of the districts (not used in the analyses)
 
 # Input: none
 
@@ -113,6 +115,7 @@ preprocess.districts <- function(){
   # read population and coordinates of districts
   coordinates <- read_excel(paste(path.LRZ, "Data/Demographics/coordinates.xlsx", sep = ""))
   population <- read_excel(paste(path.LRZ, "Data/Demographics/population.xlsx", sep = ""))
+  pop.density <- read_excel(paste(path.LRZ, "Data/Demographics/population_total.xlsx", sep = ""))
   
   districts <- tibble(districtId = as.numeric(population$districtId[seq(1, nrow(population), 2)]),
                       pop = round(population$gesamt[seq(1, nrow(population), 2)]), 
@@ -139,8 +142,10 @@ preprocess.districts <- function(){
   
   # add coordinate information
   districts <- districts[order(districts$districtId), ] %>% 
-    mutate(name = coordinates$name, lon = as.numeric(coordinates$longitude), 
-           lat = as.numeric(coordinates$latitude))
+    mutate(name = coordinates$name, 
+           lon = as.numeric(coordinates$longitude), 
+           lat = as.numeric(coordinates$latitude), 
+           density = pop.density$perkm2)
   
   return(districts)
 }
