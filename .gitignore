@@ -41,4 +41,5 @@ vignettes/*.pdf
 *.pdf
 *.Rds
 *.xlsx
+*.csv
 
