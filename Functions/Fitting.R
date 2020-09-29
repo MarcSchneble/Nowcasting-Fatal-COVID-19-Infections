@@ -17,7 +17,7 @@ nowcasting <- function(doa, T.0, d.max,
   # number of considered registration (and also reporting) dates
   T.max <- interval(T.0, doa) %/% days(1) 
   # all preprocessed RKI data sets
-  files <- list.files(path= paste(path.LRZ, "Data/Formatted", sep = ""))
+  files <- list.files("Data/Formatted")
   # reporting date of each data set
   reporting.dates <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files)), 
                                 hour = 0, tz = "GMT")
@@ -38,8 +38,10 @@ nowcasting <- function(doa, T.0, d.max,
   
   data.nowcast <- NULL
   
+  # get all fatal infections and calculate the duration between registration and death
+  # produces data which is the format comparable to the table shown in Section 4.1
   for (tt in 0:(T.max-1)) {
-    data[[tt+1]] <- read_rds(paste0(path.LRZ, "Data/Formatted/", files[tt+1])) 
+    data[[tt+1]] <- read_rds(paste0("Data/Formatted/", files[tt+1])) 
     
     data.t <- data[[tt+1]] %>% mutate(age.80 = 1*(age == "A80+")) %>%
       filter(date >= max(registration.dates[tt+1] - days(d.max-1), registration.dates[1]), 
@@ -70,7 +72,7 @@ nowcasting <- function(doa, T.0, d.max,
   data.nowcast <- data.nowcast %>% arrange(t, d) %>%
     mutate(weekday = day.infos$weekday[match(t, day.infos$t)], pi = NA)
   
-  # interpolate data for report of April 5 (only half of the cases were reported)
+  # interpolate data for report of April 5 (only about half of the cases were reported)
   data.nowcast[which(data.nowcast$t + data.nowcast$d == 10 & data.nowcast$d > 1), ]$C.t.d <-
     round(sqrt((filter(data.nowcast, t+d == 9) %>% pull(C.t.d))*
                  head((filter(data.nowcast, t+d == 11) %>% pull(C.t.d)), 18)), 0)
@@ -248,9 +250,9 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
   genders <- c("M", "W")
   
   # get the data for the reporting date
-  files <- list.files(path= paste0(path.LRZ, "Data/Formatted"))
+  files <- list.files(path = "Data/Formatted")
   file <- files[grep(as.character(doa), files)]
-  data <- read_rds(paste0(path.LRZ, "Data/Formatted/", file)) %>% 
+  data <- read_rds(paste0("Data/Formatted/", file)) %>% 
     mutate(day = interval(T.0, date) %/% days(1), 
            weekday = weekdays.POSIXt(date, abbreviate = TRUE))  
   
@@ -290,7 +292,7 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
   model$F.t <- F.t
   
   # save model in the LRZ folder
-  saveRDS(model, file = paste0(path.LRZ, "Output/", nowcast, "_", re, "_", doa, ".Rds"))
+  saveRDS(model, file = paste0("Output/", nowcast, "_", re, "_", doa, ".Rds"))
   
   # print model summary if required
   if (print.effects){
@@ -384,9 +386,9 @@ nowcasting.districts <- function(period, doa, T.0, d.max, return.nowcast = FALSE
   districts <- preprocess.districts()
   
   # check whether fitted model exists, otherwise fit it
-  if (file.exists(paste0(path.LRZ, "Output/estimate_joint_", 
+  if (file.exists(paste0("Output/estimate_joint_", 
                          as.character(doa), ".Rds"))){
-    model <- read_rds(paste0(path.LRZ, "Output/estimate_joint_", 
+    model <- read_rds(paste0("Output/estimate_joint_", 
                              as.character(doa), ".Rds")) 
   } else {
     message("Object does not exist. Fitting the model now. This is taking some time.")

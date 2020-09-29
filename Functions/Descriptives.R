@@ -1,6 +1,6 @@
 # This function calculates for every fatal case which is observed until the 
 # date of analysis the duration between registration and reported death.
-# This is stratified by age group (80-, 80+) and gender.
+# The analysis is stratified by age group (80-, 80+) and gender.
 # The results are used to produce Figures 1 and 2 in the paper.
 
 # Input:
@@ -11,7 +11,7 @@
 duration.time.KM = function(doa, d.max){ 
   
   # read all preprocessed data and extract the reporting date from the file name
-  files <- list.files(path= paste(path.LRZ, "Data/Formatted", sep = ""))
+  files <- list.files(path = "Data/Formatted")
   reporting.dates <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files)), hour = 0, tz = "GMT")
   
   # only use data up to the date of analysis
@@ -24,7 +24,7 @@ duration.time.KM = function(doa, d.max){
   
   # go through all data sets
   for (i in 1:length(files)) {
-    data.RKI = read_rds(paste0(path.LRZ, "Data/Formatted/", files[i]))
+    data.RKI = read_rds(paste0("Data/Formatted/", files[i]))
     # "new_fatality" and "new_death" are two names for the same column
     if (is.element("new_fatality", names(data.RKI))){
       data.RKI <- mutate(data.RKI, newdeath = new_fatality)
@@ -49,13 +49,13 @@ duration.time.KM = function(doa, d.max){
   theme_set(theme_bw() + theme(panel.grid = element_blank(), 
                                plot.title = element_text(hjust = 0.5)))
   
-  # add vectors to a data frame for both age groups
-  df.u80 <- tibble(d = as.factor(rep(1:d.max, 2)),
-                   deaths = c(D.w.u80, D.m.u80),
-                   kind = c(rep("Females", d.max), rep("Males", d.max)))
-  df.a80 <- tibble(d = as.factor(rep(1:d.max, 2)),
-                   deaths = c(D.w.a80, D.m.a80),
-                   kind = c(rep("Females", d.max), rep("Males", d.max)))
+  # add vectors to a data frame for both age groups and add zero counts for a duration of 0
+  df.u80 <- tibble(d = as.factor(rep(0:d.max, 2)),
+                   deaths = c(0, D.w.u80, 0, D.m.u80),
+                   kind = c(rep("Females", d.max+1), rep("Males", d.max+1)))
+  df.a80 <- tibble(d = as.factor(rep(0:d.max, 2)),
+                   deaths = c(0, D.w.a80, 0, D.m.a80),
+                   kind = c(rep("Females", d.max+1), rep("Males", d.max+1)))
   
   # get upper limit of y-axis
   lim <- max(df.a80 %>% group_by(d) %>% summarize(deaths = sum(deaths)) %>% pull(deaths))
@@ -64,18 +64,18 @@ duration.time.KM = function(doa, d.max){
   g.u80 <- ggplot(df.u80, aes(x = d, y = deaths)) + geom_bar(stat = "identity", position = "stack", aes(fill = kind)) + 
     theme(legend.justification=c(0.99,0.99), legend.position=c(0.99,0.99)) + 
     scale_y_continuous(limits = c(0, lim)) + 
-    scale_x_discrete(breaks = c(1, seq(5, d.max, 5)), labels = as.character(c(1, seq(5, d.max-5, 5), paste0(d.max, "+")))) +  
+    scale_x_discrete(breaks = seq(0, d.max, 5), labels = as.character(c(seq(0, d.max-5, 5), paste0("\u2265", d.max)))) +  
     labs(x = "Days between registered infection and reported death", y = "Counts", fill = "Gender",
          title = "Age group 80-")
   
   g.a80 <- ggplot(df.a80, aes(x = d, y = deaths)) + geom_bar(stat = "identity", position = "stack", aes(fill = kind)) + 
     theme(legend.justification=c(0.99,0.99), legend.position=c(0.99,0.99)) + 
     scale_y_continuous(limits = c(0, lim)) + 
-    scale_x_discrete(breaks = c(1, seq(5, d.max, 5)), labels = as.character(c(1, seq(5, d.max-5, 5), paste0(d.max, "+")))) +  
+    scale_x_discrete(breaks = seq(0, d.max, 5), labels = as.character(c(seq(0, d.max-5, 5), paste0("\u2265", d.max)))) + 
     labs(x = "Days between registered infection and reported death", y = "Counts", fill = "Gender",
          title = "Age group 80+")
   
-  pdf(file = paste0(path.LRZ, "Plots/Descriptives/DurationTime.pdf"), height = 6, width = 12)
+  pdf(file = "Plots/Descriptives/DurationTime.pdf", height = 6, width = 12)
   g <- grid.arrange(g.u80, g.a80, nrow = 1)
   dev.off()
   
@@ -87,10 +87,10 @@ duration.time.KM = function(doa, d.max){
     surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d, D.w.a80[d]), event = 1, gender = "Female"))
     surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d, D.m.a80[d]), event = 1, gender = "Male"))
   }
-  surv.df.u80 <- bind_rows(surv.df.u80, tibble(d = rep(d.max-1, D.w.u80[d.max]), event = 0, gender = "Female"))
-  surv.df.u80 <- bind_rows(surv.df.u80, tibble(d = rep(d.max-1, D.m.u80[d.max]), event = 0, gender = "Male"))
-  surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d.max-1, D.w.a80[d.max]), event = 0, gender = "Female"))
-  surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d.max-1, D.m.a80[d.max]), event = 0, gender = "Male"))
+  surv.df.u80 <- bind_rows(surv.df.u80, tibble(d = rep(d.max, D.w.u80[d.max]), event = 0, gender = "Female"))
+  surv.df.u80 <- bind_rows(surv.df.u80, tibble(d = rep(d.max, D.m.u80[d.max]), event = 0, gender = "Male"))
+  surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d.max, D.w.a80[d.max]), event = 0, gender = "Female"))
+  surv.df.a80 <- bind_rows(surv.df.a80, tibble(d = rep(d.max, D.m.a80[d.max]), event = 0, gender = "Male"))
   
   # fit Kaplan-Meier models for each age group and plot the results
   km.u80 <- survfit(formula = Surv(time = d, event = event) ~ gender,
@@ -122,7 +122,7 @@ duration.time.KM = function(doa, d.max){
   
   g <- arrange_ggsurvplots(x = list(g.u80, g.a80), nrow = 1, print = FALSE)
   
-  pdf(file = paste0(path.LRZ, "Plots/Descriptives/KaplanMeier.pdf"), height = 6, width = 12)
+  pdf(file = "Plots/Descriptives/KaplanMeier.pdf", height = 6, width = 12)
   print(g)
   dev.off()
 } 

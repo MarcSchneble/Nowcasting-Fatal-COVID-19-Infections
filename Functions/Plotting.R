@@ -19,7 +19,7 @@ plot.effects.nowcast <- function(model, doa, day.infos){
   pd <- plot.gam(model, select = 0)[[3]]
   s.t <- data.frame(x = pd$x, y = pd$fit, lower = pd$fit - pd$se, upper = pd$fit + pd$se)          
   
-  pdf(file = paste0(path.LRZ, "Plots/Nowcasting/TimeEffect/", doa, ".pdf"), width = 6, height = 4) 
+  pdf(file = paste0("Plots/Nowcasting/TimeEffect/", doa, ".pdf"), width = 6, height = 4) 
   g <- ggplot(s.t, aes(x = x)) + geom_line(aes(y = y), size = 1.2) + 
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) + 
     labs(x = "Registration Date", y = expression(widehat(s)[1](t))) + 
@@ -38,18 +38,21 @@ plot.effects.nowcast <- function(model, doa, day.infos){
                     upper = c(pd.u80$fit + pd.u80$se, pd.a80$fit + pd.a80$se),
                     kind = c(rep("80-", length(pd.u80$x)), rep("80+", length(pd.a80$x))))
   
-  pdf(file = paste0(path.LRZ, "Plots/Nowcasting/DurationEffect/", doa, ".pdf"), 
+  pdf(file = paste0("Plots/Nowcasting/DurationEffect/", doa, ".pdf"), 
       width = 6, height = 4) 
   g <- ggplot(s.d, aes(x = x)) + geom_line(aes(y = y, color = kind, linetype = kind), size = 1.2) + 
     geom_ribbon(data = s.d %>% filter(kind == "80-"), aes(ymin = lower, ymax = upper), alpha = 0.3) + 
     geom_ribbon(data = s.d %>% filter(kind == "80+"), aes(ymin = lower, ymax = upper), alpha = 0.2) + 
-    labs(x = "d", y = expression(paste(widehat(s)[2](d), "  and  ", widehat(s)[2](d)+widehat(s)[3](d))), color = "Age Group", linetype = "Age Group") + 
+    labs(x = "d", y = expression(paste(widehat(s)[2](d), "  and  ", widehat(s)[2](d)+widehat(s)[3](d))), 
+         color = "Age Group", linetype = "Age Group") + 
     scale_x_continuous(breaks = seq(0, d.max, 5), limits = c(0, d.max)) + 
     theme(legend.justification = c(0.99, 0.99), legend.position = c(0.99, 0.99), legend.text.align = 0) + 
     scale_color_manual(values = c("seagreen", "sienna"), 
-                       labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]")))) + 
+                       labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), 
+                                  expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]")))) + 
     scale_linetype_manual(values = c(1, 2), 
-                          labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]"))))
+                          labels = c(expression(paste("80-  [", widehat(s)[2](d), "]")), 
+                                     expression(paste("80+  [", widehat(s)[2](d)+ widehat(s)[3](d), "]"))))
   print(g)
   dev.off()
 }
@@ -79,7 +82,7 @@ plot.nowcast <- function(data, doa, T.max, d.max,
                                plot.title = element_text(hjust = 0.5)))
   
   # get the observed values at the day of analysis
-  observed <- read_rds(paste0(path.LRZ, "Data/Formatted/cases_GermanTemporal_", doa, ".rds")) %>%
+  observed <- read_rds(paste0("Data/Formatted/cases_GermanTemporal_", doa, ".rds")) %>%
     filter(date >= min(registration.dates), date <= max(registration.dates),
            age != "A00-A04", age != "A05-A14", age != "unbekannt", gender != "unbekannt") %>%
     group_by(date) %>%
@@ -99,7 +102,7 @@ plot.nowcast <- function(data, doa, T.max, d.max,
   
   # get the observed values after d.max days
   for (t in (T.max-d.max+1):(T.max-1)) {
-    data.d.max <- read_rds(paste0(path.LRZ, "Data/Formatted/cases_GermanTemporal_", T.0 + days(t + d.max), ".rds"))
+    data.d.max <- read_rds(paste0("Data/Formatted/cases_GermanTemporal_", T.0 + days(t + d.max), ".rds"))
     data$C.observed.finally[t+1] <- 
       data.d.max %>% filter(date == registration.dates[t+1], 
                             age != "A00-A04", age != "A05-A14", 
@@ -128,7 +131,7 @@ plot.nowcast <- function(data, doa, T.max, d.max,
   linetype.legend <- c(1, 3, 4)
   
   
-  pdf(file = paste0(path.LRZ, "Plots/Nowcasting/Nowcast/", 
+  pdf(file = paste0("Plots/Nowcasting/Nowcast/", 
                     max(registration.dates)+days(1), ".pdf"), width = 10, height = 6) 
   g <- ggplot(df, aes(x = t)) + geom_line(aes(y = y, color = kind, linetype = kind)) + 
     geom_point(aes(y = y, color = kind, shape = kind)) +
@@ -185,7 +188,7 @@ plot.F <- function(time, data, registration.dates){
                             rep(as.character(registration.dates[time[2]+1]), d.max+1)))
   
   # plot 
-  pdf(file = paste0(path.LRZ, "Plots/Nowcasting/F/", 
+  pdf(file = paste0("Plots/Nowcasting/F/", 
                     max(registration.dates)+days(1), ".pdf"), width = 6, height = 4)
   g <- ggplot(df, aes(x = d, y = F.t)) + 
     geom_step(aes(color = kind, linetype = kind), direction = "hv") + 
@@ -279,14 +282,14 @@ plot.map <- function(data, type, limits, date, state_borders,
 plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
   
   # district and state boundaries for plotting
-  district_borders = read_rds(paste0(path.LRZ, "Data/Maps/district_borders.Rds"))
-  state_borders = read_rds(paste0(path.LRZ, "Data/Maps/state_borders.Rds"))
+  district_borders = read_rds("Data/Maps/district_borders.Rds")
+  state_borders = read_rds("Data/Maps/state_borders.Rds")
   
   # Matching of both datasets:
   plot_data_effects <- full_join(district_borders, deaths.by.district)
   
-  png(file = paste0(path.LRZ, "Plots/Fitted/", doa, ".png"), 
-      width = 1300, height = 1600, units = "px") 
+  png(file = paste0("Plots/Fitted/", doa, ".png"), 
+      width = 1200, height = 1650, units = "px") 
   print(plot.map(plot_data_effects, type = "fitted.deaths.per100k", 
                  limits = range(deaths.by.district$fitted.deaths.per100k), 
                  date = doa, state_borders = state_borders, 
@@ -294,7 +297,7 @@ plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
                                      model$registration.dates[day.min+1], " until ",
                                      model$registration.dates[day.max+1]),
                  legend_title = expression(widehat(lambda)[r]),
-                 caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                 caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                   min(model$registration.dates), " until ", max(model$registration.dates), ".")))
   dev.off()
 }
@@ -317,14 +320,14 @@ plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
 plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
   
   # district and state boundaries for plotting
-  district_borders = read_rds(paste0(path.LRZ, "Data/Maps/district_borders.Rds"))
-  state_borders = read_rds(paste0(path.LRZ, "Data/Maps/state_borders.Rds"))
+  district_borders = read_rds("Data/Maps/district_borders.Rds")
+  state_borders = read_rds("Data/Maps/state_borders.Rds")
   
   # get desired models
-  files <- list.files(path= paste0(path.LRZ, "Output"))
+  files <- list.files(path = "Output")
   file <- files[intersect(grep(paste(doa), files), intersect(grep(paste(re), files), 
                                                              grep(paste(nowcast), files)))]
-  model = read_rds(paste0(path.LRZ, "Output/", file))  
+  model = read_rds(paste0("Output/", file))  
   
   # initilaize table with district effects
   districts <- preprocess.districts()
@@ -367,88 +370,88 @@ plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
                                plot.title = element_text(hjust = 0.5)))
   
   # plot spatial effect
-  directory <- paste0(path.LRZ, "Plots/SpatialEffect/", re)
+  directory <- paste0("Plots/SpatialEffect/", re)
   dir.create(directory, showWarnings = FALSE)
   
   png(file = paste0(directory, "/", doa, ".png"), 
-      width = 1300, height = 1550, units = "px")
+      width = 1200, height = 1550, units = "px")
   print(plot.map(data, type = "m_2", limits = range(district.effects$m_2), 
                  date = doa, state_borders = state_borders, 
                  plot_title = "Estimates of Smooth Spatial Effect",
                  legend_title = expression(widehat(m)[2](s[r])),
-                 caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                 caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                   min(model$registration.dates), " until ", max(model$registration.dates), ".")))
   dev.off()
   
   # plot random intercept
   if (re == "joint"){
     # plot random intercept u_r0
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/joint")
+    directory <- "Plots/RandomIntercept/u_r0/joint"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0", limits = range(u), 
                    date = doa, state_borders = state_borders, 
                    plot_title = "Estimates of Long-Term Random Intercept",
                    legend_title = expression(widehat(u)[r0]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
     # plot random intercept u_r1
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/joint")
+    directory <- "Plots/RandomIntercept/u_r1/joint"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1", limits = range(u), 
                    date = doa, state_borders = state_borders, 
                    plot_title = "Estimates of Short-Term Random Intercept",
                    legend_title = expression(widehat(u)[r1]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))    
     dev.off()
     
     
   } else {
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/u80")
+    directory <- "Plots/RandomIntercept/u_r0/u80"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0_u80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = "Estimates of Short-Term Random Intercept (Age Group 80-)",
+                   plot_title = "Estimates of Long-Term Random Intercept (80-)",
                    legend_title = expression(widehat(u)[r0]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off() 
     
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/u80")
+    directory <- "Plots/RandomIntercept/u_r1/u80"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1_u80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = "Estimates of Long-Term Random Intercept (Age Group 80-)",
+                   plot_title = "Estimates of Short-Term Random Intercept (80-)",
                    legend_title = expression(widehat(u)[r1]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r0/a80")
+    directory <- "Plots/RandomIntercept/u_r0/a80"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r0_a80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = "Estimates of Short-Term Random Intercept (Age Group 80+)",
+                   plot_title = "Estimates of Long-Term Random Intercept (80+)",
                    legend_title = expression(widehat(u)[r0]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
-    directory <- paste0(path.LRZ, "Plots/RandomIntercept/u_r1/a80")
+    directory <- "Plots/RandomIntercept/u_r1/a80"
     png(file = paste0(directory, "/", doa, ".png"), 
-        width = 1300, height = 1550, units = "px")
+        width = 1200, height = 1550, units = "px")
     print(plot.map(data, type = "u_r1_a80", limits = range(u), 
                    date = doa, state_borders = state_borders, 
-                   plot_title = "Estimates of Long-Term Random Intercept (Age Group 80+)",
+                   plot_title = "Estimates of Short-Term Random Intercept (80+)",
                    legend_title = expression(widehat(u)[r1]),
-                   caption = paste0("Based on data reported on ", doa, ".\nModel includes registration dates from\n",
+                   caption = paste0("Based on data reported up to ", doa, ".\nModel includes registration dates from\n",
                                     min(model$registration.dates), " until ", max(model$registration.dates), ".")))
     dev.off()
     
@@ -469,13 +472,13 @@ plot.nowcasted.deaths.ref <- function(doa){
                                plot.title = element_text(hjust = 0.5)))
   
   # get the required model objects
-  files <- list.files(path= paste0(path.LRZ, "Output"))
+  files <- list.files(path = "Output")
   files <- files[intersect(grep(as.character(doa), files), grep("joint", files))]
-  model.estimate <- read_rds(paste0(path.LRZ, "Output/estimate_joint_", 
+  model.estimate <- read_rds(paste0("Output/estimate_joint_", 
                                     as.character(doa), ".Rds"))
-  model.lower <- read_rds(paste0(path.LRZ, "Output/lower_joint_", 
+  model.lower <- read_rds(paste0("Output/lower_joint_", 
                                  as.character(doa), ".Rds"))
-  model.upper <- read_rds(paste0(path.LRZ, "Output/upper_joint_", 
+  model.upper <- read_rds(paste0("Output/upper_joint_", 
                                  as.character(doa), ".Rds"))
   
   # extract the intercepts for joining the curves at the beginning
@@ -502,7 +505,7 @@ plot.nowcasted.deaths.ref <- function(doa){
                            upper = rate + 2*sqrt(rate^2*(pd.estimate$se/pd.estimate$se.mult)^2))
   
   # plot
-  pdf(file = paste0(path.LRZ, "Plots/DeathsTime/", doa, ".pdf"), 
+  pdf(file = paste0("Plots/DeathsTime/", doa, ".pdf"), 
       width = 6, height = 4) 
   g <- ggplot(df, aes(x = x)) + geom_line(aes(y = y, color = kind, linetype = kind)) + 
     geom_ribbon(data = boundaries, aes(ymin = lower, ymax = upper), alpha = 0.3) +
@@ -538,9 +541,9 @@ plot.ACF <- function(doa){
                                plot.title = element_text(hjust = 0.5)))
   
   # get the required model objects
-  files <- list.files(path= paste0(path.LRZ, "Output"))
+  files <- list.files(path = "Output")
   files <- files[intersect(grep(as.character(doa), files), grep("joint", files))]
-  model <- read_rds(paste0(path.LRZ, "Output/estimate_joint_", 
+  model <- read_rds(paste0("Output/estimate_joint_", 
                            as.character(doa), ".rds"))
   
   T.max <- length(unique(model$data$day))
@@ -567,31 +570,8 @@ plot.ACF <- function(doa){
     scale_y_continuous(limits = c(-0.25, 1), breaks = seq(-0.2, 1, 0.2)) + 
     labs(x = "Lag", y = "ACF")
   
-  pdf(file = paste0(path.LRZ, "Plots/ACF/", doa, ".pdf"), 
+  pdf(file = paste0("Plots/ACF/", doa, ".pdf"), 
       width = 6, height = 4) 
   print(g)
   dev.off()
 } 
-
-plot.nowcast.vs.observed <- function(deaths.by.district, doa, d.max){
-  
-  lim <- max(deaths.by.district$observed.deaths.finally.per100k, deaths.by.district$upper.per.100k)
-  
-  pdf(file = paste0(path.LRZ, "Plots/NowcastedVsObserved/", doa, "_withcases.pdf")) 
-  g <- ggplot(data = deaths.by.district, aes(x = observed.deaths.finally.per100k, y = fitted.deaths.per100k)) +
-    geom_abline(intercept = 0, slope =  1, col = "grey60", linetype = "dashed", size = 1.2) +    
-    geom_segment(aes(x = observed.deaths.finally.per100k, y = lower.per.100k, xend = observed.deaths.finally.per100k, yend = upper.per.100k), color = "grey50", size = 0.6, data = deaths.by.district) +
-    geom_point(color = "black", shape = 3, size = 1.5) +
-    scale_x_continuous(limits = c(0, lim)) + 
-    scale_y_continuous(limits = c(0, lim)) + 
-    geom_text(aes(label=ifelse((observed.deaths.finally.per100k>25)|(fitted.deaths.per100k>25), as.character(name),'')),hjust=0,vjust=-0.7, size=3 ) + 
-    labs(x = paste0("Observed 40 Days after ", doa), y = paste0("Nowcasted on ", doa), 
-         title = "Observed vs. Nowcasted Fatal Infections per 100 000 Inhabitants", subtitle = paste0("Registration dates from ", 
-                                                                                                      as.character(doa - days(d.max+1)), " to ", as.character(doa - days(1)))) + 
-    theme_bw() + theme(plot.title = element_text(hjust = 0.5), 
-                       plot.subtitle = element_text(hjust = 0.5)) 
-  print(g)
-  dev.off()
-  
-  
-}

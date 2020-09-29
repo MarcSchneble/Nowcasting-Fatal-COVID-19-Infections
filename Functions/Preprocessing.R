@@ -13,12 +13,12 @@
 read.RKI <- function(all = FALSE){
   
   # get all filenames and the respective dates from the original RKI datasets
-  files.RKI <- list.files(path= paste0(path.LRZ, "Data/RKI"))
+  files.RKI <- list.files(path = "Data/RKI")
   dates.RKI <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files.RKI)), 
                           hour = 0, tz = "GMT")
   
   # get all filenames and the respective dates from the data that already has been preprocessed
-  files.read <- list.files(path= paste0(path.LRZ, "Data/Formatted"))
+  files.read <- list.files(path = "Data/Formatted")
   dates.read <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files.read)), 
                            hour = 0, tz = "GMT")
   
@@ -29,7 +29,7 @@ read.RKI <- function(all = FALSE){
   
   for (file in files.RKI) {
     # read RKI dataset and get reporting data
-    data.RKI <- read_csv(file = paste0(path.LRZ, "Data/RKI/", file))
+    data.RKI <- read_csv(file = paste0("Data/RKI/", file))
     reporting.date <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , file)), 
                                  hour = 0, tz = "GMT")
     
@@ -51,7 +51,7 @@ read.RKI <- function(all = FALSE){
                                        "updated","newcase","newdeath","date.desease"))
     
     # save prepocessed dataset
-    saveRDS(data.RKI, file = paste0(path.LRZ, "Data/Formatted/cases_GermanTemporal_", 
+    saveRDS(data.RKI, file = paste0("Data/Formatted/cases_GermanTemporal_", 
                                     as.character(reporting.date), ".rds"))
   }
 }
@@ -65,12 +65,12 @@ read.RKI <- function(all = FALSE){
 
 format.RKI <- function(){
   
-  files.preprocessed <- list.files(path= paste0(path.LRZ, "Data/Formatted"))
+  files.preprocessed <- list.files(path = "Data/Formatted")
   dates.preprocessed <- as.POSIXct(sub("\\..*" , "", sub("^[^2]*", "" , files.preprocessed)), 
                                    hour = 0, tz = "GMT")
   
   for (file in files.preprocessed) {
-    data <- as_tibble(read_rds(paste0(path.LRZ, "Data/Formatted/", file))) %>% 
+    data <- as_tibble(read_rds(paste0("Data/Formatted/", file))) %>% 
       mutate(gender = as.character(gender))
     
     # change data format of districtId from character to numeric
@@ -95,7 +95,7 @@ format.RKI <- function(){
       data <- rename(data, age = age_group) %>% mutate(age = as.character(age))
     }
     
-    saveRDS(data, file = paste0(path.LRZ, "Data/Formatted/", file))
+    saveRDS(data, file = paste0("Data/Formatted/", file))
   }
 }
 
@@ -113,9 +113,9 @@ format.RKI <- function(){
 preprocess.districts <- function(){
   
   # read population and coordinates of districts
-  coordinates <- read_excel(paste(path.LRZ, "Data/Demographics/coordinates.xlsx", sep = ""))
-  population <- read_excel(paste(path.LRZ, "Data/Demographics/population.xlsx", sep = ""))
-  pop.density <- read_excel(paste(path.LRZ, "Data/Demographics/population_total.xlsx", sep = ""))
+  coordinates <- read_excel("Data/Demographics/coordinates.xlsx")
+  population <- read_excel("Data/Demographics/population.xlsx")
+  pop.density <- read_excel("Data/Demographics/population_total.xlsx")
   
   districts <- tibble(districtId = as.numeric(population$districtId[seq(1, nrow(population), 2)]),
                       pop = round(population$gesamt[seq(1, nrow(population), 2)]), 

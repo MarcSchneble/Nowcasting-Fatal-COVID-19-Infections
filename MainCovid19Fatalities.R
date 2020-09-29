@@ -7,13 +7,6 @@ rm(list = ls())
 # sets local system language to English
 Sys.setlocale("LC_ALL","English")
 
-# path to the folder where all the data are stored and
-# model objects and plots are saved to
-# insert your local absolute path here!!!
-# details see the README file
-path.LRZ <<- "YOUR PATH HERE/Nowcasting Fatal COVID-19 Infections/"                     
-
-
 # load functions and packages ----
 source("Functions/Preprocessing.R")
 source("Functions/Descriptives.R")
@@ -44,13 +37,15 @@ d.max <- 40
 
 # preprocess the data ----
 
+# only run these two lines of you add new data to the repository
+# all the data needed to reproduce the results in the paper are
+# already preprocessed
+
 read.RKI()
 format.RKI()
 
 
-# descriptive analysis ----
-
-# produces Figures 1 and 2
+# descriptive analysis (Figures 1 and 2) ----
 duration.time.KM(doa, d.max)
 
 
