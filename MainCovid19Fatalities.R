@@ -37,12 +37,14 @@ d.max <- 40
 
 # preprocess the data ----
 
-# only run these two lines of you add new data to the repository
-# all the data needed to reproduce the results in the paper are
-# already preprocessed
+# only run lines 46 and 47 if you add new data to the repository
+# all data up to July 31 is stored in the repository as preprocessed
+# .Rds file.
+# if you would like to get the original RKI files please contact
+# marc.schneble@lmu.de (the original files are just too large for the repository)
 
-read.RKI()
-format.RKI()
+#read.RKI()
+#format.RKI()
 
 
 # descriptive analysis (Figures 1 and 2) ----
@@ -53,8 +55,6 @@ duration.time.KM(doa, d.max)
 
 # the first three models need around 20-30 minutes to fit
 # the last model needs around 90 minutes to fit
-# the model outputs are already in the LRZ folder that can be downloaded
-# so running these models is for reproducing only
 
 # fit the mortality model including the nowcast estimate in the offset
 fit.death.model(doa, T.0, d.max, re = "joint", nowcast = "estimate", 
