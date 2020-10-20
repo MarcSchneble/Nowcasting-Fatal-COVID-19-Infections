@@ -292,7 +292,7 @@ fit.death.model <- function(doa, T.0, d.max, re, nowcast,
   model$F.t <- F.t
   
   # save model in the LRZ folder
-  saveRDS(model, file = paste0("Output/", nowcast, "_", re, "_", doa, ".Rds"))
+  saveRDS(model, file = paste0("Output/", nowcast, "_", re, "_", doa, ".rds"))
   
   # print model summary if required
   if (print.effects){
@@ -387,9 +387,9 @@ nowcasting.districts <- function(period, doa, T.0, d.max, return.nowcast = FALSE
   
   # check whether fitted model exists, otherwise fit it
   if (file.exists(paste0("Output/estimate_joint_", 
-                         as.character(doa), ".Rds"))){
+                         as.character(doa), ".rds"))){
     model <- read_rds(paste0("Output/estimate_joint_", 
-                             as.character(doa), ".Rds")) 
+                             as.character(doa), ".rds")) 
   } else {
     message("Object does not exist. Fitting the model now. This is taking some time.")
     model <- fit.death.model(doa, T.0, d.max, re = "joint")

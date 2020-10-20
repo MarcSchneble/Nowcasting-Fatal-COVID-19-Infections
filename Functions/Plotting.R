@@ -282,8 +282,8 @@ plot.map <- function(data, type, limits, date, state_borders,
 plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
   
   # district and state boundaries for plotting
-  district_borders = read_rds("Data/Maps/district_borders.Rds")
-  state_borders = read_rds("Data/Maps/state_borders.Rds")
+  district_borders = read_rds("Data/Maps/district_borders.rds")
+  state_borders = read_rds("Data/Maps/state_borders.rds")
   
   # Matching of both datasets:
   plot_data_effects <- full_join(district_borders, deaths.by.district)
@@ -320,8 +320,8 @@ plot.fitted <- function(deaths.by.district, doa, model, day.min, day.max){
 plot.effects.deaths <- function(doa, re = "joint", nowcast = "estimate"){
   
   # district and state boundaries for plotting
-  district_borders = read_rds("Data/Maps/district_borders.Rds")
-  state_borders = read_rds("Data/Maps/state_borders.Rds")
+  district_borders = read_rds("Data/Maps/district_borders.rds")
+  state_borders = read_rds("Data/Maps/state_borders.rds")
   
   # get desired models
   files <- list.files(path = "Output")
@@ -475,11 +475,11 @@ plot.nowcasted.deaths.ref <- function(doa){
   files <- list.files(path = "Output")
   files <- files[intersect(grep(as.character(doa), files), grep("joint", files))]
   model.estimate <- read_rds(paste0("Output/estimate_joint_", 
-                                    as.character(doa), ".Rds"))
+                                    as.character(doa), ".rds"))
   model.lower <- read_rds(paste0("Output/lower_joint_", 
-                                 as.character(doa), ".Rds"))
+                                 as.character(doa), ".rds"))
   model.upper <- read_rds(paste0("Output/upper_joint_", 
-                                 as.character(doa), ".Rds"))
+                                 as.character(doa), ".rds"))
   
   # extract the intercepts for joining the curves at the beginning
   intercept.estimate <- as.numeric(model.estimate$coefficients[1])
